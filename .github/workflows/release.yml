@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Build .app bundle
+        run: Scripts/build-app.sh
+
+      # TODO: replace ad-hoc signing with Developer ID + notarytool once an
+      # Apple Developer Program account is available. Add the following
+      # secrets and switch sign-adhoc.sh's `--sign -` for the real identity:
+      #   APPLE_DEVELOPER_ID_CERT       (base64-encoded .p12)
+      #   APPLE_DEVELOPER_ID_CERT_PWD
+      #   APPLE_NOTARY_APPLE_ID
+      #   APPLE_NOTARY_TEAM_ID
+      #   APPLE_NOTARY_PASSWORD         (app-specific password)
+      # Then run: xcrun notarytool submit ... --wait, followed by stapler.
+      - name: Ad-hoc sign
+        run: Scripts/sign-adhoc.sh
+
+      - name: Build DMG
+        run: Scripts/make-dmg.sh
+
+      - name: Upload DMG as release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/TalkBridgeMenubar.dmg
+          body: |
+            ## Installation
+
+            The DMG is ad-hoc signed (no Apple Developer ID), so Gatekeeper
+            blocks the first launch. Either right-click the app in
+            `/Applications` and choose **Öffnen**, or run:
+
+            ```sh
+            xattr -dr com.apple.quarantine /Applications/TalkBridgeMenubar.app
+            ```
+
+            See the [README](https://github.com/leiverkus/opencode-talk-bridge-menubar#installation)
+            for the full first-launch flow.
