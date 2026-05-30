@@ -1,5 +1,12 @@
 # opencode-talk-bridge-menubar
 
+[![CI](https://github.com/leiverkus/opencode-talk-bridge-menubar/actions/workflows/ci.yml/badge.svg)](https://github.com/leiverkus/opencode-talk-bridge-menubar/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/leiverkus/opencode-talk-bridge-menubar?sort=semver)](https://github.com/leiverkus/opencode-talk-bridge-menubar/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/leiverkus/opencode-talk-bridge-menubar/total)](https://github.com/leiverkus/opencode-talk-bridge-menubar/releases)
+[![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-blue)](#build)
+[![Swift](https://img.shields.io/badge/swift-5.10%2B-orange?logo=swift)](https://swift.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A native macOS menu-bar app (Swift) that
 
 1. **keeps the Mac awake** (`IOPMAssertion`) while the Python polling bridge
