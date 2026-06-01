@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(ls /Users/patrick/Documents/Aktuell/ 2>/dev/null | head -40)"
-    ]
-  }
-}

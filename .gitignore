@@ -6,3 +6,4 @@ dist/
 *.dmg
 *.app
 .DS_Store
+.claude/
