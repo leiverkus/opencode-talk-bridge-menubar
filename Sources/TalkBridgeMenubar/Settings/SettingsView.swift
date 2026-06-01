@@ -4,10 +4,13 @@ struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     let bridgeService: BridgeService
     var currentStatus: () -> BridgeStatus?
+    var onServiceChanged: () -> Void
 
     var body: some View {
         TabView {
-            BridgeTab(settings: settings, bridgeService: bridgeService)
+            BridgeTab(settings: settings,
+                      bridgeService: bridgeService,
+                      onServiceChanged: onServiceChanged)
                 .tabItem { Label("Bridge", systemImage: "link") }
             WakeTab(settings: settings)
                 .tabItem { Label("Wachhalten", systemImage: "bolt") }

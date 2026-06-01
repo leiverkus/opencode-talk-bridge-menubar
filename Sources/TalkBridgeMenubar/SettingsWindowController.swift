@@ -8,13 +8,16 @@ final class SettingsWindowController {
     private let settings: AppSettings
     private let bridgeService: BridgeService
     private let currentStatus: () -> BridgeStatus?
+    private let onServiceChanged: () -> Void
 
     init(settings: AppSettings,
          bridgeService: BridgeService,
-         currentStatus: @escaping () -> BridgeStatus?) {
+         currentStatus: @escaping () -> BridgeStatus?,
+         onServiceChanged: @escaping () -> Void) {
         self.settings = settings
         self.bridgeService = bridgeService
         self.currentStatus = currentStatus
+        self.onServiceChanged = onServiceChanged
     }
 
     func showWindow() {
@@ -26,7 +29,8 @@ final class SettingsWindowController {
         let root = SettingsView(
             settings: settings,
             bridgeService: bridgeService,
-            currentStatus: currentStatus
+            currentStatus: currentStatus,
+            onServiceChanged: onServiceChanged
         )
         let host = NSHostingController(rootView: root)
         let win = NSWindow(contentViewController: host)

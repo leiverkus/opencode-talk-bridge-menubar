@@ -4,6 +4,7 @@ import AppKit
 struct BridgeTab: View {
     @ObservedObject var settings: AppSettings
     let bridgeService: BridgeService
+    var onServiceChanged: () -> Void = {}
 
     @State private var lastActionMessage: String?
     @State private var lastActionWasError = false
@@ -44,6 +45,8 @@ struct BridgeTab: View {
                            action: installPlist)
                     Button(".env öffnen", action: openEnv)
                 }
+                Button("Dienst entfernen…", role: .destructive,
+                       action: confirmUninstall)
             }
 
             if let msg = lastActionMessage {
@@ -70,6 +73,30 @@ struct BridgeTab: View {
             lastActionWasError = true
             lastActionMessage = String(describing: error)
         }
+        onServiceChanged()
+    }
+
+    private func confirmUninstall() {
+        let alert = NSAlert()
+        alert.messageText = "Dienst entfernen?"
+        alert.informativeText = "Stoppt den launchd-Dienst (bootout) und löscht die installierte plist unter \(settings.installedPlistURL.path). Das Bridge-Repo und die .env bleiben unangetastet."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Entfernen")
+        alert.addButton(withTitle: "Abbrechen")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        uninstall()
+    }
+
+    private func uninstall() {
+        do {
+            try bridgeService.uninstallPlist()
+            lastActionWasError = false
+            lastActionMessage = "Dienst entfernt und plist gelöscht."
+        } catch {
+            lastActionWasError = true
+            lastActionMessage = String(describing: error)
+        }
+        onServiceChanged()
     }
 
     private func openEnv() {

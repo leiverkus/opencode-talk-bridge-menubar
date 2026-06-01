@@ -35,10 +35,12 @@ final class StatusItemController: NSObject {
         bridgeService = BridgeService(settings: settings)
         servicePoller = ServiceStatePoller(service: bridgeService)
         var statusBox: () -> BridgeStatus? = { nil }
+        let poller = servicePoller
         settingsWindow = SettingsWindowController(
             settings: settings,
             bridgeService: bridgeService,
-            currentStatus: { statusBox() }
+            currentStatus: { statusBox() },
+            onServiceChanged: { poller.refresh(force: true) }
         )
         onboardingWindow = OnboardingWindowController(
             settings: settings,
