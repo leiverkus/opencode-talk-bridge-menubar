@@ -118,5 +118,6 @@ polling service via launchd and keeps the Mac awake while it runs.
 - Release pipeline is ad-hoc signed only; swap-in points for a Developer
   ID + `notarytool` are marked as TODO in `release.yml`.
 
-[Unreleased]: https://github.com/leiverkus/opencode-talk-bridge-menubar/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/leiverkus/opencode-talk-bridge-menubar/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/leiverkus/opencode-talk-bridge-menubar/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/leiverkus/opencode-talk-bridge-menubar/releases/tag/v0.1.0
