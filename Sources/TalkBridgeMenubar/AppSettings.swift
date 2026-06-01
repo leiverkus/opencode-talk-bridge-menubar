@@ -22,15 +22,33 @@ final class AppSettings: ObservableObject {
 
     private let defaults: UserDefaults
     private let wakeModeKey = "wakeMode"
-    private let bridgeRepoPathKey = "bridgeRepoPath"
+    private let bridgeBinaryPathKey = "bridgeBinaryPath"
+    private let configDirPathKey = "configDirPath"
 
     static let serviceLabel = "com.leiverkus.opencode-talk-bridge"
+
+    /// Where `uv tool install` / `pipx install opencode-talk-bridge` place the
+    /// console script.
+    static var defaultBinaryPath: String {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".local/bin/opencode-talk-bridge").path
+    }
+
+    /// Working directory holding `.env`, `status.json`, and `bridge.sqlite3`.
+    /// Matches the bridge's own example plist (XDG-style `~/.config`).
+    static var defaultConfigDirPath: String {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config/opencode-talk-bridge").path
+    }
 
     @Published var wakeMode: WakeMode {
         didSet { defaults.set(wakeMode.rawValue, forKey: wakeModeKey) }
     }
-    @Published var bridgeRepoPath: String {
-        didSet { defaults.set(bridgeRepoPath, forKey: bridgeRepoPathKey) }
+    @Published var bridgeBinaryPath: String {
+        didSet { defaults.set(bridgeBinaryPath, forKey: bridgeBinaryPathKey) }
+    }
+    @Published var configDirPath: String {
+        didSet { defaults.set(configDirPath, forKey: configDirPathKey) }
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -40,30 +58,28 @@ final class AppSettings: ObservableObject {
                   let mode = WakeMode(rawValue: raw) else { return .coupled }
             return mode
         }()
-        // No hardcoded path: a fresh install starts empty and the first-run
-        // onboarding prompts for the bridge repo. Existing users keep their
-        // persisted path.
-        self.bridgeRepoPath = defaults.string(forKey: "bridgeRepoPath") ?? ""
+        // PyPI-first model: default to the uv/pipx install locations. Fresh
+        // installs that don't match are caught by onboarding.
+        self.bridgeBinaryPath = defaults.string(forKey: "bridgeBinaryPath")
+            ?? Self.defaultBinaryPath
+        self.configDirPath = defaults.string(forKey: "configDirPath")
+            ?? Self.defaultConfigDirPath
     }
 
-    var bridgeRepoURL: URL { URL(fileURLWithPath: bridgeRepoPath, isDirectory: true) }
-
-    var statusFileURL: URL {
-        bridgeRepoURL.appendingPathComponent("status.json")
+    private static func url(for path: String) -> URL {
+        URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
     }
 
-    var venvBinaryURL: URL {
-        bridgeRepoURL.appendingPathComponent(".venv/bin/opencode-talk-bridge")
-    }
+    var bridgeBinaryURL: URL { Self.url(for: bridgeBinaryPath) }
+
+    var configDirURL: URL { Self.url(for: configDirPath) }
 
     var envFileURL: URL {
-        bridgeRepoURL.appendingPathComponent(".env")
+        configDirURL.appendingPathComponent(".env")
     }
 
-    var plistTemplateURL: URL {
-        bridgeRepoURL
-            .appendingPathComponent("deploy")
-            .appendingPathComponent("\(Self.serviceLabel).plist")
+    var statusFileURL: URL {
+        configDirURL.appendingPathComponent("status.json")
     }
 
     var installedPlistURL: URL {

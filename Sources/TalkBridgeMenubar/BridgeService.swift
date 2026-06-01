@@ -2,13 +2,10 @@ import Foundation
 import Darwin
 
 enum BridgeServiceError: Error, CustomStringConvertible {
-    case templateMissing(URL)
     case launchctlFailed(args: [String], exitCode: Int32, output: String)
 
     var description: String {
         switch self {
-        case .templateMissing(let url):
-            return "plist template not found at \(url.path)"
         case .launchctlFailed(let args, let code, let output):
             return "launchctl \(args.joined(separator: " ")) failed (\(code))\n\(output)"
         }
@@ -46,27 +43,27 @@ final class BridgeService: ServiceLoadedProbe {
         FileManager.default.fileExists(atPath: settings.installedPlistURL.path)
     }
 
-    /// Reads the bridge's template plist, rewrites the absolute paths from
-    /// current settings, and writes the result to ~/Library/LaunchAgents.
+    /// Generates the launchd plist from current settings and writes it to
+    /// ~/Library/LaunchAgents. Also ensures the config/working directory
+    /// exists so launchd's WorkingDirectory is valid and the bridge has a
+    /// home for `.env` / `status.json` / `bridge.sqlite3`.
     func installPlist() throws {
-        let templateURL = settings.plistTemplateURL
-        guard FileManager.default.fileExists(atPath: templateURL.path) else {
-            throw BridgeServiceError.templateMissing(templateURL)
-        }
-        let templateData = try Data(contentsOf: templateURL)
+        try FileManager.default.createDirectory(
+            at: settings.configDirURL, withIntermediateDirectories: true
+        )
         let subs = PlistTemplate.Substitutions(
-            venvBinary: settings.venvBinaryURL,
+            binary: settings.bridgeBinaryURL,
             envFile: settings.envFileURL,
-            workingDirectory: settings.bridgeRepoURL,
+            workingDirectory: settings.configDirURL,
             stdoutLog: settings.stdoutLogURL,
             stderrLog: settings.stderrLogURL
         )
-        let rewritten = try PlistTemplate.rewrite(template: templateData, with: subs)
+        let data = PlistTemplate.generate(label: label, with: subs)
         let destDir = settings.installedPlistURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(
             at: destDir, withIntermediateDirectories: true
         )
-        try rewritten.write(to: settings.installedPlistURL, options: .atomic)
+        try data.write(to: settings.installedPlistURL, options: .atomic)
     }
 
     /// Removes the installed plist (after best-effort bootout).

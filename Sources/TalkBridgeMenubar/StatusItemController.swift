@@ -62,10 +62,10 @@ final class StatusItemController: NSObject {
         }
         servicePoller.start()
 
-        // Restart the watcher when the user picks a different bridge repo.
-        // dropFirst skips the initial replay; debounce coalesces typing in
-        // the path TextField so we don't re-attach on every keystroke.
-        settings.$bridgeRepoPath
+        // Restart the watcher when the user changes the config dir (which is
+        // where status.json lives). dropFirst skips the initial replay;
+        // debounce coalesces typing so we don't re-attach on every keystroke.
+        settings.$configDirPath
             .dropFirst()
             .removeDuplicates()
             .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
@@ -75,10 +75,10 @@ final class StatusItemController: NSObject {
             }
             .store(in: &cancellables)
 
-        // First-run / self-healing onboarding: if the configured bridge repo
-        // isn't usable, surface the setup window. No persisted skip flag —
-        // it reappears next launch while the repo stays invalid.
-        if !BridgeRepoValidator.validate(settings).isUsable {
+        // First-run / self-healing onboarding: if the bridge binary isn't
+        // runnable, surface the setup window. No persisted skip flag — it
+        // reappears next launch while the setup stays invalid.
+        if !BridgeSetupValidator.validate(settings).isUsable {
             DispatchQueue.main.async { [weak self] in
                 self?.onboardingWindow.showWindow()
             }

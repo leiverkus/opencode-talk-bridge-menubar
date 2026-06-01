@@ -2,38 +2,41 @@ import Foundation
 
 enum PlistTemplate {
     struct Substitutions {
-        let venvBinary: URL
+        let binary: URL
         let envFile: URL
         let workingDirectory: URL
         let stdoutLog: URL
         let stderrLog: URL
     }
 
-    enum RewriteError: Error, Equatable {
-        case notADictionary
-    }
-
-    /// Reads the bridge's plist template and substitutes the four absolute
-    /// paths that vary per user / install location, leaving Label, KeepAlive,
-    /// ThrottleInterval, ProcessType, RunAtLoad untouched.
-    static func rewrite(template: Data, with subs: Substitutions) throws -> Data {
-        var format = PropertyListSerialization.PropertyListFormat.xml
-        let raw = try PropertyListSerialization.propertyList(
-            from: template, options: [], format: &format
-        )
-        guard var plist = raw as? [String: Any] else {
-            throw RewriteError.notADictionary
-        }
-        plist["ProgramArguments"] = [
-            subs.venvBinary.path,
-            "--env-file",
-            subs.envFile.path
-        ] as [String]
-        plist["WorkingDirectory"] = subs.workingDirectory.path
-        plist["StandardOutPath"] = subs.stdoutLog.path
-        plist["StandardErrorPath"] = subs.stderrLog.path
-        return try PropertyListSerialization.data(
+    /// Builds the launchd user-agent plist for the bridge from scratch.
+    ///
+    /// The bridge is now installed from PyPI (`uv tool install` / `pipx`), so
+    /// it no longer ships a `deploy/…plist` we could read — the app owns the
+    /// canonical template here. Mirrors the bridge repo's example plist:
+    /// restart on crash but not on clean exit, throttle restarts, run in the
+    /// background.
+    static func generate(label: String = AppSettings.serviceLabel,
+                         with subs: Substitutions) -> Data {
+        let plist: [String: Any] = [
+            "Label": label,
+            "ProgramArguments": [
+                subs.binary.path,
+                "--env-file",
+                subs.envFile.path
+            ],
+            "WorkingDirectory": subs.workingDirectory.path,
+            "RunAtLoad": true,
+            "KeepAlive": ["SuccessfulExit": false],
+            "ThrottleInterval": 10,
+            "StandardOutPath": subs.stdoutLog.path,
+            "StandardErrorPath": subs.stderrLog.path,
+            "ProcessType": "Background"
+        ]
+        // PropertyListSerialization with a fixed-shape, type-safe dict cannot
+        // fail; fall back to empty data rather than forcing the call to throw.
+        return (try? PropertyListSerialization.data(
             fromPropertyList: plist, format: .xml, options: 0
-        )
+        )) ?? Data()
     }
 }

@@ -16,10 +16,22 @@ A native macOS menu-bar app (Swift) that
    `error` / `stopped`) in the menu-bar icon.
 
 The app is a thin controller — credentials and the polling logic live in
-the bridge repo. Status comes from the bridge's `status.json` (single source
-of truth).
+the bridge itself. Status comes from the bridge's `status.json` (single
+source of truth).
 
 Agent-only app (`LSUIElement`), so no Dock icon, no in-app menu bar.
+
+## Get the bridge
+
+Install the bridge from PyPI (no git clone needed):
+
+```sh
+uv tool install opencode-talk-bridge
+# or: pipx install opencode-talk-bridge
+```
+
+Both place the console script at `~/.local/bin/opencode-talk-bridge`, which
+is the app's default binary path.
 
 ## Installation
 
@@ -41,18 +53,21 @@ hidden binaries.
 
 ## First run / configuration
 
-On first launch the app doesn't know where your `opencode-talk-bridge`
-checkout lives, so a **setup window** appears automatically:
+On first launch, if the bridge binary can't be found, a **setup window**
+appears automatically:
 
-1. Pick the bridge repo folder (the one containing `.venv/` and
-   `deploy/com.leiverkus.opencode-talk-bridge.plist`).
-2. The window shows live checks for the required artifacts — repo dir,
-   plist template, venv binary — plus a recommendation to have a `.env`
+1. Confirm the **bridge binary** path (defaults to
+   `~/.local/bin/opencode-talk-bridge`) and the **config directory**
+   (defaults to `~/.config/opencode-talk-bridge`, where `.env`,
+   `status.json`, and `bridge.sqlite3` live).
+2. The window shows live checks: an executable bridge binary (required),
+   the config dir (created on demand), and a `.env` recommendation
    (credentials live there; the app never touches them).
-3. Click **plist installieren** to write the launchd agent, then **Fertig**.
+3. Optionally **Konfig-Ordner anlegen** and **.env öffnen**, then
+   **plist installieren** to write the launchd agent, and **Fertig**.
 
 The setup window is self-healing: it reappears on the next launch as long
-as the configured path can't be resolved, so a wrong or moved repo never
+as the bridge binary can't be resolved, so a wrong or moved path never
 leaves the app silently broken. You can reopen it any time from the menu's
 **Einrichtung…** item, and the same checks appear in
 **Einstellungen → Bridge**.
@@ -60,18 +75,18 @@ leaves the app silently broken. You can reopen it any time from the menu's
 ## How it controls the bridge
 
 - launchd label: `com.leiverkus.opencode-talk-bridge`
-- The app reads the plist template from
-  `<bridge-repo>/deploy/com.leiverkus.opencode-talk-bridge.plist`, rewrites
-  the four absolute paths (venv binary, `--env-file`, `WorkingDirectory`,
-  stdout/stderr log paths) from the app's settings, and installs the result
-  to `~/Library/LaunchAgents/`.
+- The app **generates** the launchd plist itself (the PyPI wheel doesn't
+  ship one) from the configured binary path, config dir, and log paths,
+  then writes it to `~/Library/LaunchAgents/`. The plist's
+  `ProgramArguments` run `<binary> --env-file <configdir>/.env` with
+  `WorkingDirectory = <configdir>`, so the bridge finds its `.env`,
+  `status.json`, and DB there.
 - Start/stop go through `launchctl bootstrap gui/<uid> <plist>` and
   `launchctl bootout gui/<uid>/<label>`. A second start on an already-loaded
   service kicks it with `launchctl kickstart -k`.
-- Status comes from `<bridge-repo>/status.json` (file path configurable via
-  the bridge's `STATUS_FILE` env). The reader uses `DispatchSource` FS
-  events for instant updates plus a 2 s timer fallback (atomic
-  temp+rename writes invalidate a single FD watch).
+- Status comes from `<configdir>/status.json`. The reader uses
+  `DispatchSource` FS events for instant updates plus a 2 s timer fallback
+  (atomic temp+rename writes invalidate a single FD watch).
 
 The launchd-service variant was chosen over a child process so the bridge
 survives an app restart and is independently observable via `launchctl

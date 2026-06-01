@@ -11,26 +11,23 @@ struct BridgeTab: View {
 
     var body: some View {
         Form {
-            Section("Bridge-Repo") {
+            Section("Bridge") {
                 HStack {
-                    TextField("Pfad", text: $settings.bridgeRepoPath)
+                    TextField("Bridge-Binary", text: $settings.bridgeBinaryPath)
                         .textFieldStyle(.roundedBorder)
-                    Button("Auswählen…", action: pickRepo)
+                    Button("Datei…", action: pickBinary)
                 }
-                BridgeRepoStatusRows(
-                    validation: BridgeRepoValidator.validate(settings)
+                HStack {
+                    TextField("Konfig-Ordner", text: $settings.configDirPath)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Ordner…", action: pickConfigDir)
+                }
+                BridgeSetupStatusRows(
+                    validation: BridgeSetupValidator.validate(settings)
                 )
-                LabeledContent("venv-Binary",
-                               value: settings.venvBinaryURL.path)
+                LabeledContent(".env", value: settings.envFileURL.path)
                     .font(.callout.monospaced())
-                LabeledContent(".env",
-                               value: settings.envFileURL.path)
-                    .font(.callout.monospaced())
-                LabeledContent("Status-File",
-                               value: settings.statusFileURL.path)
-                    .font(.callout.monospaced())
-                LabeledContent("plist-Vorlage",
-                               value: settings.plistTemplateURL.path)
+                LabeledContent("Status-File", value: settings.statusFileURL.path)
                     .font(.callout.monospaced())
             }
 
@@ -58,9 +55,15 @@ struct BridgeTab: View {
         .formStyle(.grouped)
     }
 
-    private func pickRepo() {
-        if let url = FolderPicker.pickDirectory(startingAt: settings.bridgeRepoURL) {
-            settings.bridgeRepoPath = url.path
+    private func pickBinary() {
+        if let url = PathPicker.pickFile(startingAt: settings.bridgeBinaryURL) {
+            settings.bridgeBinaryPath = url.path
+        }
+    }
+
+    private func pickConfigDir() {
+        if let url = PathPicker.pickDirectory(startingAt: settings.configDirURL) {
+            settings.configDirPath = url.path
         }
     }
 
@@ -79,7 +82,7 @@ struct BridgeTab: View {
     private func confirmUninstall() {
         let alert = NSAlert()
         alert.messageText = "Dienst entfernen?"
-        alert.informativeText = "Stoppt den launchd-Dienst (bootout) und löscht die installierte plist unter \(settings.installedPlistURL.path). Das Bridge-Repo und die .env bleiben unangetastet."
+        alert.informativeText = "Stoppt den launchd-Dienst (bootout) und löscht die installierte plist unter \(settings.installedPlistURL.path). Bridge-Binary, Konfig-Ordner und .env bleiben unangetastet."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Entfernen")
         alert.addButton(withTitle: "Abbrechen")
@@ -100,6 +103,11 @@ struct BridgeTab: View {
     }
 
     private func openEnv() {
+        let fm = FileManager.default
+        try? fm.createDirectory(at: settings.configDirURL, withIntermediateDirectories: true)
+        if !fm.fileExists(atPath: settings.envFileURL.path) {
+            fm.createFile(atPath: settings.envFileURL.path, contents: Data())
+        }
         NSWorkspace.shared.open(settings.envFileURL)
     }
 }

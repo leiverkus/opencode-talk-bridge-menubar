@@ -1,16 +1,14 @@
 import SwiftUI
 
-/// Shared green-check / red-x rows showing whether the configured bridge repo
-/// contains the artifacts the app needs. Used by both the onboarding window
-/// and the Settings → Bridge tab.
-struct BridgeRepoStatusRows: View {
-    let validation: BridgeRepoValidation
+/// Shared green-check / red-x rows showing whether the app can drive the
+/// bridge. Used by both the onboarding window and the Settings → Bridge tab.
+struct BridgeSetupStatusRows: View {
+    let validation: BridgeSetupValidation
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            row("Repo-Ordner", ok: validation.repoExists, required: true)
-            row("plist-Vorlage (deploy/…plist)", ok: validation.plistTemplateExists, required: true)
-            row("venv-Binary (.venv/bin/…)", ok: validation.venvBinaryExists, required: true)
+            row("Bridge-Binary (ausführbar)", ok: validation.binaryExists, required: true)
+            row("Konfig-Ordner", ok: validation.configDirExists, required: false)
             row(".env (Credentials, empfohlen)", ok: validation.envFileExists, required: false)
         }
     }

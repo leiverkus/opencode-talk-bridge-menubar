@@ -9,8 +9,8 @@ struct OnboardingView: View {
     @State private var installMessage: String?
     @State private var installWasError = false
 
-    private var validation: BridgeRepoValidation {
-        BridgeRepoValidator.validate(settings)
+    private var validation: BridgeSetupValidation {
+        BridgeSetupValidator.validate(settings)
     }
 
     var body: some View {
@@ -18,27 +18,35 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Willkommen bei Talk Bridge")
                     .font(.title2.bold())
-                Text("Die App steuert die Python-Bridge „opencode-talk-bridge“ als launchd-Dienst. Wähle den Ordner des Bridge-Repos — er muss `.venv/bin/opencode-talk-bridge` und `deploy/\(AppSettings.serviceLabel).plist` enthalten.")
+                Text("Installiere die Bridge per `uv tool install opencode-talk-bridge` (oder `pipx install opencode-talk-bridge`). Bestätige dann unten den Pfad zum Binary und den Konfig-Ordner für `.env` / `status.json`.")
                     .font(.callout)
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            HStack {
-                TextField("Pfad zum Bridge-Repo", text: $settings.bridgeRepoPath)
-                    .textFieldStyle(.roundedBorder)
-                Button("Ordner wählen…", action: pickRepo)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    TextField("Pfad zum Bridge-Binary", text: $settings.bridgeBinaryPath)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Datei wählen…", action: pickBinary)
+                }
+                HStack {
+                    TextField("Konfig-Ordner", text: $settings.configDirPath)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Ordner wählen…", action: pickConfigDir)
+                }
             }
 
-            BridgeRepoStatusRows(validation: validation)
+            BridgeSetupStatusRows(validation: validation)
 
             Divider()
 
             HStack(spacing: 12) {
+                Button("Konfig-Ordner anlegen", action: createConfigDir)
+                    .disabled(validation.configDirExists)
                 Button("plist installieren", action: installPlist)
                     .disabled(!validation.isUsable)
                 Button(".env öffnen", action: openEnv)
-                    .disabled(!validation.repoExists)
             }
 
             if let msg = installMessage {
@@ -48,7 +56,7 @@ struct OnboardingView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if !validation.envFileExists && validation.repoExists {
+            if !validation.envFileExists {
                 Text("Hinweis: Keine `.env` gefunden. Credentials (Nextcloud, OpenCode) gehören dort hinein — die App verwaltet sie nicht.")
                     .font(.footnote)
                     .foregroundColor(.secondary)
@@ -66,12 +74,31 @@ struct OnboardingView: View {
             }
         }
         .padding(20)
-        .frame(width: 520, height: 380)
+        .frame(width: 540, height: 420)
     }
 
-    private func pickRepo() {
-        if let url = FolderPicker.pickDirectory(startingAt: settings.bridgeRepoURL) {
-            settings.bridgeRepoPath = url.path
+    private func pickBinary() {
+        if let url = PathPicker.pickFile(startingAt: settings.bridgeBinaryURL) {
+            settings.bridgeBinaryPath = url.path
+        }
+    }
+
+    private func pickConfigDir() {
+        if let url = PathPicker.pickDirectory(startingAt: settings.configDirURL) {
+            settings.configDirPath = url.path
+        }
+    }
+
+    private func createConfigDir() {
+        do {
+            try FileManager.default.createDirectory(
+                at: settings.configDirURL, withIntermediateDirectories: true
+            )
+            installWasError = false
+            installMessage = "Konfig-Ordner angelegt: \(settings.configDirURL.path)"
+        } catch {
+            installWasError = true
+            installMessage = String(describing: error)
         }
     }
 
@@ -87,6 +114,13 @@ struct OnboardingView: View {
     }
 
     private func openEnv() {
+        // Create config dir + an empty .env if missing so the editor opens
+        // something rather than failing.
+        let fm = FileManager.default
+        try? fm.createDirectory(at: settings.configDirURL, withIntermediateDirectories: true)
+        if !fm.fileExists(atPath: settings.envFileURL.path) {
+            fm.createFile(atPath: settings.envFileURL.path, contents: Data())
+        }
         NSWorkspace.shared.open(settings.envFileURL)
     }
 }
