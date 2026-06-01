@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-06-01
+
+Robustness pass plus first-run onboarding. Removes the hardcoded bridge
+repo path, fixes the menu-button lockup after a failed action, and adds
+guided setup for fresh installs.
+
 ### Fixed
 - Start/Stop menu items could stay disabled forever after a failed action.
   `runAction` disabled both buttons and then called `servicePoller.refresh()`,
