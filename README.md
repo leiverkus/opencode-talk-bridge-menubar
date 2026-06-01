@@ -105,14 +105,27 @@ forced re-publish that re-enables the menu after a failed action).
 
 ```sh
 Scripts/build-app.sh   # → dist/TalkBridgeMenubar.app
-Scripts/sign-adhoc.sh  # codesign --sign -
+Scripts/sign.sh        # codesign; ad-hoc by default
 Scripts/make-dmg.sh    # → dist/TalkBridgeMenubar.dmg
+Scripts/notarize.sh    # no-op unless APPLE_NOTARY_* are set
 ```
 
 `.github/workflows/release.yml` runs the same chain on a `v*` tag push and
-uploads the DMG as a release asset. A TODO marker in that workflow points
-at the lines to change once a Developer ID + notarization becomes
-available.
+uploads the DMG as a release asset.
+
+The pipeline is notarization-ready without restructuring: `sign.sh` honours
+`SIGN_IDENTITY` (default `-` = ad-hoc) and `notarize.sh` is a no-op until the
+notary credentials exist. To ship a notarized build, add a Developer ID to
+the runner keychain and set these repo secrets, then re-tag:
+
+```
+SIGN_IDENTITY          "Developer ID Application: … (TEAMID)"
+APPLE_NOTARY_APPLE_ID  Apple ID e-mail
+APPLE_NOTARY_TEAM_ID   10-char team id
+APPLE_NOTARY_PASSWORD  app-specific password
+```
+
+Locally you can do the same: `SIGN_IDENTITY="…" Scripts/sign.sh && Scripts/make-dmg.sh && APPLE_NOTARY_APPLE_ID=… APPLE_NOTARY_TEAM_ID=… APPLE_NOTARY_PASSWORD=… Scripts/notarize.sh`.
 
 ## License
 
