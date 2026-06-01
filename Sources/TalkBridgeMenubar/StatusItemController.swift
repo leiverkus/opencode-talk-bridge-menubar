@@ -10,6 +10,7 @@ final class StatusItemController: NSObject {
     private let bridgeService: BridgeService
     private let servicePoller: ServiceStatePoller
     private let settingsWindow: SettingsWindowController
+    private let onboardingWindow: OnboardingWindowController
 
     private var wakeMenuItems: [WakeMode: NSMenuItem] = [:]
     private var stateMenuItem: NSMenuItem!
@@ -39,6 +40,10 @@ final class StatusItemController: NSObject {
             bridgeService: bridgeService,
             currentStatus: { statusBox() }
         )
+        onboardingWindow = OnboardingWindowController(
+            settings: settings,
+            bridgeService: bridgeService
+        )
         super.init()
         statusBox = { [weak self] in self?.currentStatus }
         applyIcon(for: nil)
@@ -67,6 +72,15 @@ final class StatusItemController: NSObject {
                 self.statusReader.retarget(to: self.settings.statusFileURL)
             }
             .store(in: &cancellables)
+
+        // First-run / self-healing onboarding: if the configured bridge repo
+        // isn't usable, surface the setup window. No persisted skip flag —
+        // it reappears next launch while the repo stays invalid.
+        if !BridgeRepoValidator.validate(settings).isUsable {
+            DispatchQueue.main.async { [weak self] in
+                self?.onboardingWindow.showWindow()
+            }
+        }
     }
 
     private func applyIcon(for status: BridgeStatus?) {
@@ -141,6 +155,14 @@ final class StatusItemController: NSObject {
         logMenuItem.submenu = logSubmenu
         menu.addItem(logMenuItem)
 
+        let setupItem = NSMenuItem(
+            title: "Einrichtung…",
+            action: #selector(openOnboarding),
+            keyEquivalent: ""
+        )
+        setupItem.target = self
+        menu.addItem(setupItem)
+
         let settingsItem = NSMenuItem(
             title: "Einstellungen…",
             action: #selector(openSettings),
@@ -160,6 +182,10 @@ final class StatusItemController: NSObject {
 
     @objc private func openSettings() {
         settingsWindow.showWindow()
+    }
+
+    @objc private func openOnboarding() {
+        onboardingWindow.showWindow()
     }
 
     @objc private func openStdoutLog() {

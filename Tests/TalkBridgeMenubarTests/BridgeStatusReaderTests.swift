@@ -18,15 +18,17 @@ final class BridgeStatusReaderTests: XCTestCase {
     func testPublishesNilWhenFileMissing() {
         let reader = BridgeStatusReader(url: tempURL, pollInterval: .milliseconds(100))
         let exp = expectation(description: "first update")
-        var received: BridgeStatus??
+        var didReceive = false
+        var received: BridgeStatus?
         reader.onUpdate = { status in
-            received = .some(status)
+            didReceive = true
+            received = status
             exp.fulfill()
         }
         reader.start()
         wait(for: [exp], timeout: 2)
-        XCTAssertNotNil(received)
-        XCTAssertNil(received!)
+        XCTAssertTrue(didReceive)
+        XCTAssertNil(received)
         reader.stop()
     }
 

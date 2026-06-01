@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **First-run onboarding.** On launch, if the configured bridge repo can't
+  be found, a setup window appears: pick the `opencode-talk-bridge` folder,
+  see live green/red checks for the required artifacts (repo dir, plist
+  template, venv binary) plus a recommendation for `.env`, install the
+  launchd plist, and finish. Self-healing — it reappears next launch while
+  the repo stays invalid, with no persisted skip flag. Reachable any time
+  via the menu's new "Einrichtung…" item.
+- `BridgeRepoValidator.validate(_:)` returning `BridgeRepoValidation`
+  (`repoExists`, `plistTemplateExists`, `venvBinaryExists`, `envFileExists`,
+  `isUsable`). `.env` is recommended but excluded from `isUsable` since the
+  app installs the plist without touching credentials. 8 new tests cover
+  empty/whitespace paths, missing artifacts, and the directory-vs-file edge.
+- Shared `BridgeRepoStatusRows` view (used by both the onboarding window
+  and the Settings → Bridge tab) and a shared `FolderPicker.pickDirectory`
+  helper (NSOpenPanel), replacing the duplicated picker in `BridgeTab`.
+
 ### Changed
+- **Removed the hardcoded bridge repo path.** A fresh install now starts
+  with an empty path and is driven by onboarding instead of the author's
+  personal `/Users/patrick/…` default. Existing users keep their persisted
+  path untouched (no onboarding for them).
 - Menu Start/Stop enablement now follows `launchctl`-derived truth via a
   new `ServiceStatePoller` (5 s background tick + immediate refresh after
   each action) instead of inferring service presence from `status.json`.

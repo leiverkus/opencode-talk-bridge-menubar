@@ -16,6 +16,9 @@ struct BridgeTab: View {
                         .textFieldStyle(.roundedBorder)
                     Button("Auswählen…", action: pickRepo)
                 }
+                BridgeRepoStatusRows(
+                    validation: BridgeRepoValidator.validate(settings)
+                )
                 LabeledContent("venv-Binary",
                                value: settings.venvBinaryURL.path)
                     .font(.callout.monospaced())
@@ -53,12 +56,7 @@ struct BridgeTab: View {
     }
 
     private func pickRepo() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.directoryURL = settings.bridgeRepoURL
-        if panel.runModal() == .OK, let url = panel.url {
+        if let url = FolderPicker.pickDirectory(startingAt: settings.bridgeRepoURL) {
             settings.bridgeRepoPath = url.path
         }
     }

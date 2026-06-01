@@ -24,9 +24,6 @@ final class AppSettings: ObservableObject {
     private let wakeModeKey = "wakeMode"
     private let bridgeRepoPathKey = "bridgeRepoPath"
 
-    static let defaultBridgeRepoPath =
-        "/Users/patrick/Documents/Aktuell/opencode-talk-bridge"
-
     static let serviceLabel = "com.leiverkus.opencode-talk-bridge"
 
     @Published var wakeMode: WakeMode {
@@ -43,8 +40,10 @@ final class AppSettings: ObservableObject {
                   let mode = WakeMode(rawValue: raw) else { return .coupled }
             return mode
         }()
-        self.bridgeRepoPath = defaults.string(forKey: "bridgeRepoPath")
-            ?? Self.defaultBridgeRepoPath
+        // No hardcoded path: a fresh install starts empty and the first-run
+        // onboarding prompts for the bridge repo. Existing users keep their
+        // persisted path.
+        self.bridgeRepoPath = defaults.string(forKey: "bridgeRepoPath") ?? ""
     }
 
     var bridgeRepoURL: URL { URL(fileURLWithPath: bridgeRepoPath, isDirectory: true) }

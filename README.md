@@ -39,6 +39,24 @@ The source is on GitHub and the build pipeline is in
 [`.github/workflows/release.yml`](.github/workflows/release.yml) — no
 hidden binaries.
 
+## First run / configuration
+
+On first launch the app doesn't know where your `opencode-talk-bridge`
+checkout lives, so a **setup window** appears automatically:
+
+1. Pick the bridge repo folder (the one containing `.venv/` and
+   `deploy/com.leiverkus.opencode-talk-bridge.plist`).
+2. The window shows live checks for the required artifacts — repo dir,
+   plist template, venv binary — plus a recommendation to have a `.env`
+   (credentials live there; the app never touches them).
+3. Click **plist installieren** to write the launchd agent, then **Fertig**.
+
+The setup window is self-healing: it reappears on the next launch as long
+as the configured path can't be resolved, so a wrong or moved repo never
+leaves the app silently broken. You can reopen it any time from the menu's
+**Einrichtung…** item, and the same checks appear in
+**Einstellungen → Bridge**.
+
 ## How it controls the bridge
 
 - launchd label: `com.leiverkus.opencode-talk-bridge`
