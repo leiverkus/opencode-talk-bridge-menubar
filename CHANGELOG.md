@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Menu Start/Stop enablement now follows `launchctl`-derived truth via a
+  new `ServiceStatePoller` (5 s background tick + immediate refresh after
+  each action) instead of inferring service presence from `status.json`.
+  The status file remained the right source for the icon and wake
+  coupling but was a poor proxy for "service registered" — a missing or
+  stale file used to leave Stop disabled while the launchd job was very
+  much loaded.
+- `launchctl bootstrap`/`bootout`/`kickstart` calls run on a dedicated
+  background `DispatchQueue` (`userInitiated`) so a slow or briefly
+  hanging launchctl invocation can no longer freeze the menu-bar app.
+  Start/Stop items disable themselves while an action is in flight to
+  prevent re-entry.
+
+### Added
+- `BridgeStatusReader.retarget(to:)`: the watcher can now be repointed at
+  a different status file at runtime. `StatusItemController` subscribes
+  to `AppSettings.$bridgeRepoPath` (debounced 300 ms) and re-targets the
+  reader when the Settings UI changes the bridge repo, so icon and wake
+  coupling no longer keep watching a stale path until an app restart.
+- New tests: `BridgeStatusReaderTests.testRetargetSwitchesToNewFile`
+  proves the watcher publishes from the new URL after `retarget`.
+
 ## [0.1.0] — 2026-05-30
 
 Initial release. Native macOS menu-bar app that controls the

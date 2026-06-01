@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 
 final class StatusItemController: NSObject {
     private let statusItem: NSStatusItem
@@ -7,6 +8,7 @@ final class StatusItemController: NSObject {
     private let wakeCoordinator: WakeCoordinator
     private let statusReader: BridgeStatusReader
     private let bridgeService: BridgeService
+    private let servicePoller: ServiceStatePoller
     private let settingsWindow: SettingsWindowController
 
     private var wakeMenuItems: [WakeMode: NSMenuItem] = [:]
@@ -14,6 +16,15 @@ final class StatusItemController: NSObject {
     private var startItem: NSMenuItem!
     private var stopItem: NSMenuItem!
     private var currentStatus: BridgeStatus?
+    private var isServiceLoaded: Bool = false
+    private var cancellables: Set<AnyCancellable> = []
+
+    /// Serializes Start/Stop actions off the main thread so `launchctl`
+    /// invocations (which can hang briefly) never freeze the menu bar.
+    private let actionQueue = DispatchQueue(
+        label: "com.leiverkus.TalkBridgeMenubar.actionqueue",
+        qos: .userInitiated
+    )
 
     override init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -21,6 +32,7 @@ final class StatusItemController: NSObject {
         wakeCoordinator = WakeCoordinator(assertion: assertion, mode: settings.wakeMode)
         statusReader = BridgeStatusReader(url: settings.statusFileURL)
         bridgeService = BridgeService(settings: settings)
+        servicePoller = ServiceStatePoller(service: bridgeService)
         var statusBox: () -> BridgeStatus? = { nil }
         settingsWindow = SettingsWindowController(
             settings: settings,
@@ -37,6 +49,24 @@ final class StatusItemController: NSObject {
             self?.handleStatusUpdate(status)
         }
         statusReader.start()
+
+        servicePoller.onUpdate = { [weak self] loaded in
+            self?.handleServiceLoaded(loaded)
+        }
+        servicePoller.start()
+
+        // Restart the watcher when the user picks a different bridge repo.
+        // dropFirst skips the initial replay; debounce coalesces typing in
+        // the path TextField so we don't re-attach on every keystroke.
+        settings.$bridgeRepoPath
+            .dropFirst()
+            .removeDuplicates()
+            .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.statusReader.retarget(to: self.settings.statusFileURL)
+            }
+            .store(in: &cancellables)
     }
 
     private func applyIcon(for status: BridgeStatus?) {
@@ -157,30 +187,52 @@ final class StatusItemController: NSObject {
         applyIcon(for: status)
         stateMenuItem.title = stateMenuTitle(for: status)
 
-        // Menu enablement: any non-nil status that isn't `stopped` means a
-        // launchd job exists and `Bridge stoppen` should be available.
-        let serviceLoaded = status != nil && status?.state != .stopped
-        startItem.isEnabled = !serviceLoaded
-        stopItem.isEnabled = serviceLoaded
-
         // Wake coupling: only hold the assertion while the bridge is actively
         // working — opencode_down/error are parked states where sleeping is OK.
         wakeCoordinator.setBridgeRunning(status?.isLive ?? false)
     }
 
+    /// launchd-truth signal: drives Start/Stop button enablement independently
+    /// of status.json, which may be missing or stale while the service exists.
+    private func handleServiceLoaded(_ loaded: Bool) {
+        isServiceLoaded = loaded
+        startItem.isEnabled = !loaded
+        stopItem.isEnabled = loaded
+    }
+
     @objc private func startBridge() {
-        do {
+        runAction(title: "Bridge konnte nicht gestartet werden") { [bridgeService] in
             try bridgeService.start()
-        } catch {
-            presentError(error, title: "Bridge konnte nicht gestartet werden")
         }
     }
 
     @objc private func stopBridge() {
-        do {
+        runAction(title: "Bridge konnte nicht gestoppt werden") { [bridgeService] in
             try bridgeService.stop()
-        } catch {
-            presentError(error, title: "Bridge konnte nicht gestoppt werden")
+        }
+    }
+
+    /// Run a launchctl-touching action on the background queue, then refresh
+    /// the service-loaded signal and surface any error on the main thread.
+    /// Buttons are disabled during the action to prevent re-entry.
+    private func runAction(title: String, _ work: @escaping () throws -> Void) {
+        startItem.isEnabled = false
+        stopItem.isEnabled = false
+        actionQueue.async { [weak self] in
+            let actionError: Error?
+            do {
+                try work()
+                actionError = nil
+            } catch {
+                actionError = error
+            }
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                if let error = actionError {
+                    self.presentError(error, title: title)
+                }
+                self.servicePoller.refresh()
+            }
         }
     }
 

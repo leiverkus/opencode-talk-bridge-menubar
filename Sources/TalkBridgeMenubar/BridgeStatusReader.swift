@@ -5,7 +5,7 @@ import Foundation
 /// 2-second timer fallback (atomic temp+rename writes break a single FD watch
 /// after the first delete event).
 final class BridgeStatusReader {
-    private let url: URL
+    private var url: URL
     private let pollInterval: DispatchTimeInterval
     private let queue = DispatchQueue(label: "com.leiverkus.TalkBridgeMenubar.statusreader")
 
@@ -38,6 +38,21 @@ final class BridgeStatusReader {
             self?.timer?.cancel()
             self?.timer = nil
             self?.detachFSWatch()
+        }
+    }
+
+    /// Point the reader at a new status file (e.g. when the user changes the
+    /// bridge repo path in Settings). Drops the old watcher, resets the
+    /// dedupe snapshot, and republishes against the new URL.
+    func retarget(to newURL: URL) {
+        queue.async { [weak self] in
+            guard let self = self else { return }
+            guard self.url != newURL else { return }
+            self.detachFSWatch()
+            self.url = newURL
+            self.lastSnapshot = nil
+            self.tryAttachFSWatch()
+            self.readAndPublish()
         }
     }
 
