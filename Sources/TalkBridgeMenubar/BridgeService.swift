@@ -15,7 +15,14 @@ enum BridgeServiceError: Error, CustomStringConvertible {
     }
 }
 
-final class BridgeService {
+/// The launchd-truth probe the menu uses to decide Start/Stop enablement.
+/// Extracted as a protocol so `ServiceStatePoller` can be tested without
+/// shelling out to `launchctl`.
+protocol ServiceLoadedProbe: AnyObject {
+    func isLoaded() -> Bool
+}
+
+final class BridgeService: ServiceLoadedProbe {
     private let settings: AppSettings
     private let label: String
     private let launchctlPath: String

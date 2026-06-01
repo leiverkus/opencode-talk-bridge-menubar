@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Start/Stop menu items could stay disabled forever after a failed action.
+  `runAction` disabled both buttons and then called `servicePoller.refresh()`,
+  but the poller only published on a *changed* value — so a failed Start
+  (service still not loaded) produced no update and left both buttons dead
+  until the next 5 s tick happened to differ. `refresh(force:)` now always
+  re-publishes after an action, restoring correct enablement immediately.
+
 ### Added
+- `ServiceLoadedProbe` protocol behind `BridgeService`, letting
+  `ServiceStatePoller` be unit-tested without shelling out to `launchctl`.
+  4 new poller tests, including a regression guard for the forced re-publish.
 - **First-run onboarding.** On launch, if the configured bridge repo can't
   be found, a setup window appears: pick the `opencode-talk-bridge` folder,
   see live green/red checks for the required artifacts (repo dir, plist

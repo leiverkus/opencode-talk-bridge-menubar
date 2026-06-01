@@ -94,9 +94,12 @@ The app appears as a status item in the menu bar.
 swift test
 ```
 
-UI is excluded — tests cover status decoding, plist rewrite, the
-launchd-target string, the sleep-assertion lifecycle (against a protocol
-mock), and the wake-coordinator state machine.
+UI is excluded — the 39 tests cover status decoding (all six states),
+plist rewrite, the launchd-target string, the sleep-assertion lifecycle
+(against a protocol mock), the wake-coordinator state machine, bridge-repo
+validation, the status reader (initial read, atomic replace, and
+`retarget` to a new path), and the service-state poller (dedupe plus the
+forced re-publish that re-enables the menu after a failed action).
 
 ## Release packaging
 

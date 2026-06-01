@@ -257,7 +257,9 @@ final class StatusItemController: NSObject {
                 if let error = actionError {
                     self.presentError(error, title: title)
                 }
-                self.servicePoller.refresh()
+                // force: always re-publish so the buttons are re-enabled even
+                // when a failed action left the loaded state unchanged.
+                self.servicePoller.refresh(force: true)
             }
         }
     }

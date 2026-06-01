@@ -6,20 +6,26 @@ import Foundation
 /// than from the bridge's status.json (which may be missing, stale, or
 /// describe a service that was bootstrapped without ever writing yet).
 final class ServiceStatePoller {
-    private let service: BridgeService
+    private let service: ServiceLoadedProbe
     private let interval: DispatchTimeInterval
-    private let queue = DispatchQueue(
-        label: "com.leiverkus.TalkBridgeMenubar.servicepoller",
-        qos: .utility
-    )
+    private let queue: DispatchQueue
+    private let publishQueue: DispatchQueue
     private var timer: DispatchSourceTimer?
     private var lastValue: Bool?
 
     var onUpdate: ((Bool) -> Void)?
 
-    init(service: BridgeService, interval: DispatchTimeInterval = .seconds(5)) {
+    init(service: ServiceLoadedProbe,
+         interval: DispatchTimeInterval = .seconds(5),
+         queue: DispatchQueue = DispatchQueue(
+            label: "com.leiverkus.TalkBridgeMenubar.servicepoller",
+            qos: .utility
+         ),
+         publishQueue: DispatchQueue = .main) {
         self.service = service
         self.interval = interval
+        self.queue = queue
+        self.publishQueue = publishQueue
     }
 
     deinit { stop() }
@@ -29,7 +35,7 @@ final class ServiceStatePoller {
             guard let self = self, self.timer == nil else { return }
             let t = DispatchSource.makeTimerSource(queue: self.queue)
             t.schedule(deadline: .now(), repeating: self.interval)
-            t.setEventHandler { [weak self] in self?.tick() }
+            t.setEventHandler { [weak self] in self?.tick(force: false) }
             t.resume()
             self.timer = t
         }
@@ -43,15 +49,19 @@ final class ServiceStatePoller {
     }
 
     /// Force a fresh check right now (e.g. after a Start/Stop action).
-    func refresh() {
-        queue.async { [weak self] in self?.tick() }
+    /// `force: true` always publishes, even if the value is unchanged — this
+    /// is what re-enables the menu buttons after a failed action that left
+    /// the loaded state the same (otherwise the dedupe in `tick` would
+    /// swallow the update and the buttons would stay disabled forever).
+    func refresh(force: Bool = false) {
+        queue.async { [weak self] in self?.tick(force: force) }
     }
 
-    private func tick() {
+    private func tick(force: Bool = false) {
         let loaded = service.isLoaded()
-        if lastValue == loaded { return }
+        if !force, lastValue == loaded { return }
         lastValue = loaded
-        DispatchQueue.main.async { [onUpdate] in
+        publishQueue.async { [onUpdate] in
             onUpdate?(loaded)
         }
     }
