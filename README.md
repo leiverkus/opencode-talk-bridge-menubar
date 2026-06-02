@@ -109,12 +109,29 @@ The app appears as a status item in the menu bar.
 swift test
 ```
 
-UI is excluded — the 39 tests cover status decoding (all six states),
-plist rewrite, the launchd-target string, the sleep-assertion lifecycle
-(against a protocol mock), the wake-coordinator state machine, bridge-repo
-validation, the status reader (initial read, atomic replace, and
-`retarget` to a new path), and the service-state poller (dedupe plus the
-forced re-publish that re-enables the menu after a failed action).
+UI is excluded — the 41 unit tests cover status decoding (all six states),
+plist generation, the launchd-target string, the sleep-assertion lifecycle
+(against a protocol mock), the wake-coordinator state machine, bridge-setup
+validation (executable-bit aware), the status reader (initial read, atomic
+replace, and `retarget` to a new path), and the service-state poller
+(dedupe plus the forced re-publish that re-enables the menu after a failed
+action).
+
+### End-to-end (opt-in)
+
+`E2EIntegrationTests` drives the real `BridgeService`/`SleepAssertion`
+against the uv/pipx-installed bridge and the live launchd domain. It is
+skipped unless `RUN_E2E=1`, so CI and normal runs never touch launchd:
+
+```sh
+uv tool install opencode-talk-bridge
+RUN_E2E=1 swift test --filter E2EIntegrationTests
+```
+
+It installs the generated plist, `bootstrap`s the service, confirms it is
+loaded, reads `status.json`, `bootout`s, and verifies the IOPM assertion
+shows up in `pmset -g assertions` and is released — cleaning up after
+itself.
 
 ## Release packaging
 
