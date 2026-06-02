@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-06-02
+
+First stable release. Tracks the bridge's PyPI publication: configure by
+binary path + config directory, generate the launchd plist in-app, guided
+onboarding, app icon, in-app uninstall, and a notarization-ready pipeline.
+Verified end to end against bridge 0.3.0 (launchd bootstrap/bootout, real
+`status.json`, the built `.app` running as an agent and holding/releasing
+the sleep assertion).
+
 ### Changed
 - **PyPI-first configuration model.** The bridge is now published to PyPI
   (`uv tool install opencode-talk-bridge` / `pipx install`), so the app no
@@ -151,6 +160,7 @@ polling service via launchd and keeps the Mac awake while it runs.
 - Release pipeline is ad-hoc signed only; swap-in points for a Developer
   ID + `notarytool` are marked as TODO in `release.yml`.
 
-[Unreleased]: https://github.com/leiverkus/opencode-talk-bridge-menubar/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/leiverkus/opencode-talk-bridge-menubar/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/leiverkus/opencode-talk-bridge-menubar/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/leiverkus/opencode-talk-bridge-menubar/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/leiverkus/opencode-talk-bridge-menubar/releases/tag/v0.1.0
